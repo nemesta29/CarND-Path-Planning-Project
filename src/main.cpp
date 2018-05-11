@@ -291,7 +291,8 @@ int main() {
 						too_close = false;
 					} 
 					
-				} else if (too_close) {
+				} 
+				if (too_close) {
 					if (d < (2 + 4 * lane + 2)) {
 						if ((check_car_s > car_s) && (check_car_s - car_s) < 20) 
 								pos_right = true;
