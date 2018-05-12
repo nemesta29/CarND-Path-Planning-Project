@@ -258,11 +258,8 @@ int main() {
 			bool too_close = false;
 			bool lane_change = false;
 			
-			// if (lane_change) {
-				// ref_v = 48;
-			// }
-			
-			//Plaing constraints
+						
+			//Planning constraints
 			double min_s_left, min_s_right;
 			min_s_left = 99999;
 			min_s_right = 99999;
@@ -281,50 +278,58 @@ int main() {
 				check_car_s += ((double)prev_size * 0.02 * check_speed); //If using previous points, can project s value out
 				if(d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2)) {
 					//Checking on s values greater than ours and comparing s gap
-					if ((check_car_s > car_s) && (check_car_s - car_s) < 20) {
+					if ((check_car_s > car_s) && (check_car_s - car_s) < 30) {
 						
 						too_close = true;
-						break;
+						//break;
 					}
-				
-					if (i == sensor_fusion.size() - 1 && too_close){
-						too_close = false;
-					} 
-					
 				} 
-				if (too_close) {
+				else {
+					//Checking right lane for obstacles
 					if (d < (2 + 4 * lane + 2)) {
-						if ((check_car_s > car_s) && (check_car_s - car_s) < 20) 
+						//Checking if car in front of vehicle
+						if ((check_car_s > car_s) && (check_car_s - car_s) < 30) 
 								pos_right = true;
-						if (fabs(check_car_s - car_s) > 20 && fabs(check_car_s - car_s) < min_s_right) {
+						if (fabs(check_car_s - car_s) > 30 && fabs(check_car_s - car_s) < min_s_right) {
 							min_s_right =  fabs(check_car_s - car_s);
-							lane_change = true;
+							if (too_close)
+								lane_change = true;
 						}
-					} else if (d > (2 + 4 * lane - 2)) {
-						if ((check_car_s > car_s) && (check_car_s - car_s) < 20) 
+					} 
+					//Checking left lane for obstacles
+					if (d > (2 + 4 * lane - 2)) {
+						//Checking if car in front of vehicle
+						if ((check_car_s > car_s) && (check_car_s - car_s) < 30) 
 								pos_left = true;
-						if (fabs(check_car_s - car_s) > 20 && fabs(check_car_s - car_s) < min_s_left) {
+						if (fabs(check_car_s - car_s) > 30 && fabs(check_car_s - car_s) < min_s_left) {
 							min_s_left =  fabs(check_car_s - car_s);
-							lane_change = true;
+							if (too_close)
+								lane_change = true;
 						}
 					}
 				}
 			}
 			
-			if (too_close) {
+			//Braking if car in front or changing lane
+			if (too_close || lane_change) {
 				ref_v -= 0.224;
+				//Deciding if lane change is possible
 				if (lane_change) {
-					if (min_s_left > min_s_right && min_s_left < 99999){
+					if (min_s_left > min_s_right){
+						//When no car is present in front of us and lane change viable
 						if (!pos_left) {
-							too_close = false;
+							//Lane change left
+							lane -= 1;
 						}
-						lane -= 1; 
+						
 					}
-					else if (min_s_left < min_s_right && min_s_right < 99999){
+					else {
+						//When no car is present in front of us and lane change viable
 						if (!pos_right) {
-							too_close = false;
+							//Lane change right
+							lane += 1; 
 						}
-						lane += 1; 
+						
 					}
 				}
 			}
@@ -366,9 +371,9 @@ int main() {
 			}
 			
 			//Add 10m spaced points in Frenet
-			vector<double> next_waypt0 = getXY(car_s + 30, ((2 + 4) * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y); 
-			vector<double> next_waypt1 = getXY(car_s + 60, ((2 + 4) * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y); 
-			vector<double> next_waypt2 = getXY(car_s + 90, ((2 + 4) * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y); 
+			vector<double> next_waypt0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y); 
+			vector<double> next_waypt1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y); 
+			vector<double> next_waypt2 = getXY(car_s + 90, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y); 
 			
 			//Adding the waypoints to the pts list
 			ptsx.push_back(next_waypt0[0]);
@@ -417,7 +422,7 @@ int main() {
 			
 			for (int i = 1; i <= 50 - previous_path_x.size(); i++) {
 				
-				if (ref_v < 48 && !too_close){
+			if (ref_v < 48 && !(too_close || lane_change)){
 					ref_v += 0.224;
 				}
 				double N = (target_dist / (0.02 * ref_v / 2.24));
@@ -439,16 +444,6 @@ int main() {
 				next_x_vals.push_back(x_point);
 				next_y_vals.push_back(y_point);
 			}
-			// double dist_inc = 0.29;
-			// for(int i = 0; i < 50; i++)
-			// {
-				  // double next_s = car_s + (i+1.5);
-				  // double next_d = 6;
-				  // auto XY = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-				  
-				  // next_x_vals.push_back(XY[0]);
-				  // next_y_vals.push_back(XY[1]);
-			// }
 			
 			
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
